@@ -1,0 +1,385 @@
+<!doctype html><html lang=ru><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"></head><body><title>Продажи оптик по точкам</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: operational dashboard — filters bar, KPI strip, total trend, ranking + point card, heatmap, yearly table, method notes */
+:root{
+  --bg:#f5f7f8; --panel:#ffffff; --line:#e1e6ea; --grid:#edf0f2;
+  --fg:#12191f; --fg2:#4b5862; --muted:#7c8992;
+  --accent:#2a78d6; --accent-soft:#e3eefb; --sel:#12191f;
+  --up:#0b7a3e; --down:#c23b3b;
+  --s100:#e8f1fc; --s700:#0d366b;
+  --display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111518; --panel:#181d21; --line:#2a3238; --grid:#222a2f;
+  --fg:#eef2f4; --fg2:#b5c0c7; --muted:#85929a;
+  --accent:#3987e5; --accent-soft:#1c2c40; --sel:#eef2f4;
+  --up:#3fbf72; --down:#ef6b6b; --s100:#1d2a38; --s700:#8ec0ff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111518; --panel:#181d21; --line:#2a3238; --grid:#222a2f;
+  --fg:#eef2f4; --fg2:#b5c0c7; --muted:#85929a;
+  --accent:#3987e5; --accent-soft:#1c2c40; --sel:#eef2f4;
+  --up:#3fbf72; --down:#ef6b6b; --s100:#1d2a38; --s700:#8ec0ff; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:600;font-size:clamp(20px,3vw,28px);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--fg2);margin:4px 0 0}
+h2{font-size:15px;font-weight:600;margin:0}
+.hint{color:var(--muted);font-size:12.5px;margin:2px 0 0}
+.filters{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-bottom:1px solid var(--line)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+.seg button{white-space:nowrap;font:inherit;border:0;background:none;color:var(--fg2);padding:7px 12px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:600}
+.seg button:focus-visible,select:focus-visible,.rank-row:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;max-width:100%}
+.lbl{color:var(--muted);font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.kpi .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.kpi .v{font-size:26px;font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .d{font-size:12.5px;color:var(--fg2)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.card-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.two{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px;align-items:start}
+.up{color:var(--up)} .down{color:var(--down)}
+.rank{display:flex;flex-direction:column;gap:2px;max-height:620px;overflow:auto;padding-right:4px}
+.rank-row{display:grid;grid-template-columns:22px minmax(0,190px) minmax(0,1fr) 52px 58px;gap:8px;align-items:center;padding:3px 4px;border-radius:6px;cursor:pointer}
+.rank-row:hover{background:var(--accent-soft)}
+.rank-row.on{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.rank-row .n{color:var(--muted);font-size:12px;text-align:right}
+.rank-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:12px;background:var(--accent);border-radius:0 4px 4px 0;min-width:2px}
+.rank-row .c{text-align:right;font-weight:600}
+.rank-row .dl{text-align:right;font-size:12px}
+.rank-head{display:grid;grid-template-columns:22px minmax(0,190px) minmax(0,1fr) 52px 58px;gap:8px;padding:0 4px 4px;color:var(--muted);font-size:11.5px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.rank-head span:nth-child(4),.rank-head span:nth-child(5){text-align:right}
+svg text{fill:var(--fg2);font-family:var(--body);font-size:11px}
+svg .ax{stroke:var(--line)} svg .gr{stroke:var(--grid)}
+.chart{width:100%;position:relative}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.stat{border-top:1px solid var(--line);padding-top:6px}
+.stat .k{color:var(--muted);font-size:12px}.stat .v{font-weight:600;font-size:15px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:5px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+th{color:var(--muted);font-weight:500;font-size:12px;position:sticky;top:0;background:var(--panel)}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--panel)}
+td small{font-size:11.5px;margin-left:4px}
+tbody tr:hover td{background:var(--accent-soft)}
+.hm{border-collapse:separate;border-spacing:2px;width:auto;font-size:11px}
+.hm td{padding:0;width:20px;height:18px;border:0;border-radius:3px;cursor:default}
+.hm td.nm{width:auto;padding-right:8px;font-size:12px;text-align:left;color:var(--fg);border-radius:0;cursor:pointer}
+.hm th{font-size:10px;padding:0 0 4px;text-align:center;border:0}
+.hm th.yr{font-size:11.5px;color:var(--fg2);text-align:left;font-weight:600}
+.hm td.dim{opacity:.28}
+.hm td.tot{width:auto;padding-left:8px;color:var(--fg2);font-size:12px;text-align:right}
+.legend{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.legend .ramp{width:140px;height:10px;border-radius:3px}
+#tip{position:fixed;pointer-events:none;z-index:20;background:var(--fg);color:var(--bg);padding:7px 10px;border-radius:7px;font-size:12.5px;line-height:1.35;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+#tip b{font-weight:600}
+.notes{color:var(--fg2);font-size:13px}
+.notes ul{margin:6px 0 0;padding-left:18px}
+.notes li{margin:3px 0}
+.pill{display:inline-block;font-size:11.5px;padding:1px 7px;border-radius:99px;background:var(--accent-soft);color:var(--fg2);margin-left:6px}
+@media (max-width:900px){.two{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.rank-row,.rank-head{grid-template-columns:18px minmax(0,120px) minmax(0,1fr) 44px 50px}.kpi .v{font-size:22px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Выполненные заказы по оптикам</h1>
+      <p class="sub" id="sub"></p>
+    </div>
+  </header>
+
+  <div class="filters" role="group" aria-label="Период">
+    <span class="lbl">Год</span>
+    <div class="seg" id="years"></div>
+    <span class="lbl">Месяц</span>
+    <select id="month" aria-label="Месяц"></select>
+  </div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card">
+    <div class="card-h"><div><h2>Все точки: заказов в месяц</h2><p class="hint">Выделен выбранный период. Наведи на столбик, чтобы увидеть число.</p></div></div>
+    <div class="chart" id="total"></div>
+  </section>
+
+  <div class="two">
+    <section class="card">
+      <div class="card-h"><div><h2 id="rankTitle">Рейтинг точек</h2><p class="hint" id="rankHint"></p></div></div>
+      <div class="rank-head"><span>#</span><span>Оптика</span><span></span><span>Заказы</span><span id="dHead">Δ</span></div>
+      <div class="rank" id="rank"></div>
+    </section>
+    <section class="card" id="pointCard">
+      <div class="card-h"><div><h2 id="pTitle"></h2><p class="hint">Динамика по месяцам за весь период; выбери точку в рейтинге, в таблице или здесь</p></div>
+        <select id="pSel" aria-label="Оптика"></select></div>
+      <div class="chart" id="pLine"></div>
+      <div class="chart" id="pYears" style="margin-top:6px"></div>
+      <div class="stats" id="pStats"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-h"><div><h2>Тепловая карта: точка × месяц</h2><p class="hint">Чем темнее ячейка, тем больше заказов. Месяцы вне выбранного периода приглушены. Нажми на название точки, чтобы открыть её карточку.</p></div>
+      <div class="legend"><span>0</span><span class="ramp" id="ramp"></span><span id="rampMax"></span></div></div>
+    <div class="scroll"><table class="hm" id="hm"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h"><div><h2>По годам</h2><p class="hint" id="yHint"></p></div></div>
+    <div class="scroll" style="max-height:640px"><table id="ytab"></table></div>
+  </section>
+
+  <section class="card notes">
+    <h2>Как считалось</h2>
+    <ul id="notes"></ul>
+  </section>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const D={"months": ["2022-03", "2022-04", "2022-05", "2022-06", "2022-07", "2022-08", "2022-09", "2022-10", "2022-11", "2022-12", "2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10", "2023-11", "2023-12", "2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"], "points": ["Лента 1", "Ровио 15", "Сигма", "Чапаева 42а", "Ленина 9", "Чайкиной 8а", "Октябрьский 59а", "Первомайский 47", "Тетрис", "Калинина 19", "Лента 2", "Ровио 18", "Луначарского 15", "Костамукша Окт 10", "Березовая 24", "Кемская 3", "Скандинавский 12", "Олонец, Ленина 23", "Ровио 3", "Нойбранденбургская 24", "Пограничная 52", "Ленина 38", "Невского 54", "Невского 26", "Офис", "Петрозаводское 12", "Первомайский 15", "Кондопога, Пролетарская 16", "Деревянное Онежская 53", "Ленина 16", "Суоярви, Победы 15", "Кончезеро", "Мелиоративный, Петрозаводская 20", "Репникова 1", "Ленинградская 14", "Кондопога, Бумажников 38", "Костамукша Лен 1а", "Казарменская 2 (Магнит)", "Озеровых 12", "Карельский 20", "Лососинское", "Профсоюзов 10", "Ругозерский 2", "Кемь, Кирова 3", "Островского 56", "Судакова 3", "Интернационалистов 22", "Склад", "Ключевая 24", "Боровая 11", "Олонец, Ленина 17", "ИМ", "Октябрьский 27", "Мичуринская 64", "Ватутина 41"], "series": {"Лента 1": [20, 70, 45, 35, 51, 39, 37, 55, 62, 47, 44, 57, 69, 60, 60, 58, 52, 78, 47, 53, 60, 49, 53, 66, 69, 72, 52, 42, 53, 56, 57, 57, 55, 48, 47, 58, 73, 43, 46, 56, 42, 52, 37, 66, 45, 86, 48, 67, 65, 57, 44, 50, 30, 30, 38, 1], "Ровио 15": [89, 67, 55, 40, 44, 37, 45, 40, 49, 41, 34, 43, 52, 35, 35, 31, 44, 50, 40, 52, 35, 48, 40, 47, 48, 43, 42, 34, 24, 48, 34, 48, 33, 48, 35, 48, 48, 31, 37, 41, 22, 36, 47, 42, 30, 40, 37, 34, 41, 34, 31, 43, 35, 38, 34, 0], "Сигма": [69, 48, 43, 34, 31, 43, 56, 51, 33, 48, 41, 41, 53, 48, 27, 22, 26, 37, 35, 30, 50, 55, 36, 28, 51, 34, 34, 35, 45, 39, 49, 45, 35, 39, 42, 38, 47, 44, 42, 39, 32, 41, 38, 67, 50, 45, 33, 49, 38, 53, 33, 18, 27, 32, 28, 3], "Чапаева 42а": [70, 54, 47, 53, 46, 50, 52, 48, 64, 47, 52, 31, 66, 58, 42, 39, 45, 35, 46, 50, 35, 29, 33, 46, 45, 40, 28, 29, 36, 36, 19, 28, 43, 45, 31, 48, 37, 29, 27, 24, 40, 36, 50, 42, 46, 44, 31, 30, 36, 44, 28, 21, 21, 27, 27, 2], "Ленина 9": [47, 56, 34, 28, 41, 40, 35, 33, 33, 55, 50, 43, 56, 37, 40, 40, 34, 47, 40, 35, 35, 23, 33, 42, 48, 35, 27, 33, 48, 40, 32, 34, 35, 33, 32, 34, 32, 31, 37, 24, 14, 22, 33, 41, 32, 47, 35, 38, 43, 38, 26, 34, 17, 29, 25, 0], "Чайкиной 8а": [57, 45, 29, 33, 42, 40, 41, 47, 44, 53, 39, 27, 43, 54, 39, 30, 30, 48, 32, 37, 45, 40, 24, 32, 46, 47, 36, 20, 42, 33, 41, 42, 52, 25, 27, 35, 39, 35, 26, 21, 29, 36, 32, 29, 33, 31, 21, 22, 15, 41, 19, 18, 16, 32, 33, 0], "Октябрьский 59а": [24, 58, 35, 37, 24, 35, 42, 29, 40, 28, 34, 30, 46, 46, 48, 29, 25, 29, 53, 35, 30, 32, 28, 26, 39, 46, 38, 43, 14, 31, 26, 36, 47, 23, 45, 47, 38, 35, 33, 27, 25, 40, 37, 39, 29, 27, 29, 30, 29, 38, 22, 26, 27, 26, 30, 5], "Первомайский 47": [20, 21, 11, 11, 18, 17, 12, 23, 12, 13, 14, 12, 18, 14, 6, 5, 6, 11, 7, 4, 11, 12, 7, 8, 21, 24, 18, 13, 7, 11, 16, 24, 16, 21, 23, 23, 50, 32, 14, 20, 30, 22, 29, 26, 25, 35, 24, 25, 23, 30, 17, 15, 25, 14, 24, 2], "Тетрис": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 23, 53, 45, 37, 51, 37, 56, 46, 46, 56, 37, 34, 66, 33, 33, 41, 31, 31, 4], "Калинина 19": [3, 0, 1, 1, 1, 1, 3, 31, 44, 30, 3, 25, 27, 19, 7, 7, 7, 12, 16, 16, 16, 10, 11, 9, 11, 14, 5, 14, 12, 11, 9, 18, 15, 19, 13, 38, 21, 27, 17, 15, 6, 4, 3, 17, 6, 5, 4, 10, 21, 13, 7, 4, 5, 6, 14, 1], "Лента 2": [29, 37, 22, 36, 19, 19, 26, 34, 27, 32, 16, 30, 41, 31, 33, 20, 20, 22, 30, 18, 27, 26, 17, 19, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 15, 12, 1], "Ровио 18": [5, 3, 4, 5, 6, 1, 2, 6, 14, 19, 16, 15, 13, 11, 8, 6, 8, 2, 5, 5, 15, 7, 12, 5, 6, 8, 14, 5, 5, 14, 12, 4, 10, 8, 9, 4, 11, 8, 9, 3, 5, 1, 5, 5, 4, 12, 1, 0, 0, 0, 0, 0, 24, 21, 25, 0], "Луначарского 15": [16, 5, 5, 3, 5, 4, 8, 5, 3, 4, 0, 3, 6, 10, 3, 2, 7, 6, 1, 9, 3, 8, 4, 3, 9, 9, 10, 2, 3, 2, 8, 7, 2, 4, 3, 16, 7, 5, 2, 3, 0, 7, 3, 5, 2, 13, 6, 1, 7, 47, 16, 22, 15, 20, 11, 3], "Костамукша Окт 10": [0, 0, 1, 2, 1, 3, 2, 3, 2, 3, 4, 3, 5, 5, 0, 6, 3, 3, 3, 3, 1, 4, 6, 5, 6, 3, 3, 3, 1, 3, 2, 3, 7, 6, 0, 5, 5, 7, 2, 2, 2, 5, 4, 4, 0, 6, 12, 33, 28, 29, 31, 22, 26, 25, 14, 3], "Березовая 24": [14, 15, 6, 16, 8, 13, 11, 6, 11, 11, 15, 19, 15, 15, 14, 11, 5, 5, 6, 6, 11, 7, 5, 8, 10, 7, 4, 2, 2, 2, 3, 11, 6, 3, 5, 5, 4, 2, 3, 2, 1, 6, 3, 4, 3, 3, 3, 4, 9, 2, 0, 0, 0, 0, 0, 0], "Кемская 3": [1, 4, 1, 4, 11, 8, 5, 7, 6, 5, 4, 8, 7, 2, 6, 9, 5, 10, 1, 4, 5, 8, 10, 4, 8, 6, 4, 4, 2, 3, 3, 8, 2, 5, 1, 2, 3, 4, 2, 4, 0, 3, 4, 3, 1, 4, 6, 3, 5, 2, 10, 4, 6, 2, 0, 0], "Скандинавский 12": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 1, 1, 15, 16, 18, 11, 8, 9, 9, 6, 9, 8, 5, 21, 8, 14, 17, 10, 8, 13, 10, 7, 13, 1], "Олонец, Ленина 23": [3, 3, 0, 2, 4, 4, 9, 7, 5, 4, 7, 7, 3, 6, 2, 1, 3, 2, 2, 2, 3, 1, 5, 5, 2, 1, 8, 5, 2, 3, 3, 1, 4, 1, 4, 0, 2, 2, 3, 8, 12, 1, 1, 5, 2, 8, 2, 14, 4, 15, 0, 6, 8, 6, 3, 1], "Ровио 3": [2, 2, 4, 2, 0, 1, 0, 8, 3, 9, 7, 4, 17, 2, 7, 6, 4, 2, 4, 10, 0, 8, 5, 2, 9, 0, 6, 4, 2, 4, 6, 4, 5, 3, 3, 5, 3, 0, 9, 2, 1, 5, 3, 2, 1, 4, 5, 3, 0, 4, 4, 5, 2, 4, 2, 2], "Нойбранденбургская 24": [8, 4, 4, 3, 3, 5, 3, 0, 3, 12, 3, 4, 14, 11, 9, 3, 1, 2, 4, 0, 14, 0, 4, 3, 9, 2, 3, 6, 5, 5, 1, 1, 5, 3, 1, 6, 1, 4, 2, 4, 2, 3, 1, 1, 0, 8, 1, 1, 5, 3, 2, 2, 8, 6, 1, 0], "Пограничная 52": [2, 0, 3, 4, 1, 1, 4, 7, 10, 1, 1, 0, 0, 1, 6, 1, 2, 2, 2, 3, 4, 1, 2, 4, 15, 0, 3, 1, 1, 1, 1, 6, 3, 4, 2, 19, 4, 4, 2, 3, 7, 2, 1, 4, 3, 17, 4, 4, 11, 3, 1, 2, 4, 2, 4, 2], "Ленина 38": [1, 1, 4, 3, 2, 7, 2, 2, 2, 4, 6, 1, 2, 0, 5, 3, 6, 8, 3, 5, 8, 5, 6, 4, 2, 3, 6, 1, 2, 1, 3, 2, 2, 2, 6, 9, 5, 2, 2, 2, 2, 1, 6, 3, 2, 1, 1, 2, 2, 1, 0, 1, 2, 8, 0, 0], "Невского 54": [2, 1, 5, 1, 0, 2, 1, 1, 1, 2, 2, 3, 3, 0, 2, 3, 0, 2, 1, 3, 5, 3, 1, 4, 3, 5, 1, 2, 8, 4, 3, 4, 9, 3, 2, 4, 3, 4, 4, 1, 4, 5, 2, 1, 1, 8, 2, 5, 3, 4, 1, 3, 0, 2, 3, 1], "Невского 26": [4, 0, 2, 2, 1, 2, 3, 3, 2, 7, 1, 2, 2, 11, 1, 1, 3, 2, 1, 2, 1, 3, 1, 0, 1, 8, 3, 0, 0, 0, 2, 2, 2, 0, 0, 8, 7, 1, 2, 2, 1, 1, 1, 2, 2, 10, 2, 0, 2, 0, 1, 3, 7, 3, 0, 0], "Офис": [11, 1, 7, 3, 1, 1, 4, 4, 1, 3, 0, 3, 5, 1, 1, 3, 4, 0, 3, 2, 0, 8, 2, 4, 8, 2, 0, 2, 3, 0, 2, 3, 4, 0, 0, 0, 1, 6, 6, 1, 2, 3, 2, 1, 4, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0], "Петрозаводское 12": [1, 0, 0, 11, 3, 0, 1, 0, 4, 6, 2, 0, 0, 1, 5, 10, 2, 2, 2, 1, 2, 1, 2, 11, 1, 2, 0, 5, 0, 0, 0, 1, 1, 1, 1, 27, 1, 0, 0, 2, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 1, 0], "Первомайский 15": [2, 7, 4, 5, 4, 1, 0, 2, 0, 5, 4, 1, 1, 3, 4, 2, 4, 3, 3, 5, 2, 6, 1, 4, 3, 1, 0, 0, 1, 1, 1, 1, 4, 0, 3, 2, 3, 1, 5, 1, 0, 1, 0, 0, 0, 3, 3, 1, 8, 1, 1, 0, 1, 0, 0, 0], "Кондопога, Пролетарская 16": [0, 1, 0, 2, 1, 2, 3, 1, 3, 1, 2, 0, 3, 0, 1, 1, 1, 0, 3, 1, 1, 2, 2, 1, 1, 2, 3, 2, 0, 1, 0, 4, 3, 4, 2, 0, 5, 1, 0, 6, 7, 0, 2, 4, 3, 0, 10, 2, 4, 2, 5, 0, 0, 4, 0, 0], "Деревянное Онежская 53": [0, 0, 12, 6, 1, 1, 8, 0, 0, 1, 0, 0, 19, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 7, 6, 0, 0, 5, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 3, 1, 0, 0, 0], "Ленина 16": [6, 4, 1, 6, 2, 6, 0, 3, 3, 2, 1, 0, 0, 1, 3, 1, 1, 3, 8, 2, 1, 3, 2, 0, 1, 0, 4, 6, 0, 6, 1, 2, 2, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "Суоярви, Победы 15": [3, 3, 5, 0, 3, 0, 3, 2, 4, 4, 0, 1, 10, 18, 3, 0, 0, 1, 0, 1, 1, 0, 0, 2, 10, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "Кончезеро": [0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 16, 3, 1, 9, 6, 8, 1, 5, 1, 2, 1, 0, 7, 4, 2, 0], "Мелиоративный, Петрозаводская 20": [0, 0, 2, 0, 0, 2, 0, 1, 1, 3, 3, 0, 1, 0, 1, 0, 0, 3, 1, 0, 0, 1, 2, 1, 12, 2, 2, 2, 2, 0, 0, 1, 2, 1, 2, 2, 4, 0, 2, 0, 2, 3, 0, 3, 0, 2, 1, 0, 0, 3, 1, 0, 1, 0, 0, 1], "Репникова 1": [3, 2, 1, 4, 1, 0, 0, 2, 1, 1, 0, 3, 3, 6, 0, 4, 1, 0, 1, 1, 0, 2, 3, 2, 4, 5, 2, 5, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 2, 0, 1, 0, 5, 0, 0, 2, 0, 0], "Ленинградская 14": [0, 0, 0, 0, 0, 0, 3, 9, 3, 2, 2, 5, 4, 7, 4, 7, 1, 2, 2, 2, 3, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "Кондопога, Бумажников 38": [1, 1, 0, 1, 1, 3, 3, 5, 0, 4, 2, 0, 0, 0, 1, 0, 1, 2, 0, 2, 3, 1, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 2, 0, 3, 3, 0, 1, 0, 0, 1, 2, 2, 1, 0, 1, 0, 1, 2, 1, 0, 4, 0, 0, 2, 0], "Костамукша Лен 1а": [0, 0, 0, 0, 0, 1, 0, 0, 4, 3, 0, 3, 2, 2, 1, 0, 0, 1, 1, 4, 1, 2, 1, 1, 1, 4, 0, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2, 1, 0, 4, 0, 0, 0, 2, 3, 0, 1, 2, 2, 1, 1, 2, 0, 1, 0, 0], "Казарменская 2 (Магнит)": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 9, 8, 2, 4, 9, 3, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "Озеровых 12": [0, 0, 4, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 1, 0, 2, 1, 1, 1, 2, 0, 0, 1, 1, 4, 10, 0, 2, 0, 3, 0, 1, 0, 4, 0, 4, 0], "Карельский 20": [0, 0, 0, 0, 4, 2, 0, 0, 0, 1, 0, 2, 1, 1, 2, 2, 1, 5, 0, 2, 2, 2, 2, 2, 1, 7, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "Лососинское": [1, 1, 0, 1, 0, 2, 0, 1, 2, 2, 1, 1, 4, 2, 0, 1, 1, 1, 1, 1, 3, 0, 2, 1, 1, 2, 0, 2, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "Профсоюзов 10": [0, 0, 6, 1, 1, 1, 0, 2, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3, 0, 7, 0, 6, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0], "Ругозерский 2": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 7, 5, 1, 0, 1, 0, 0, 0, 0, 0, 6, 4, 0, 0, 0, 0, 0, 0, 0, 3, 0], "Кемь, Кирова 3": [0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 2, 2, 1, 1, 0, 1, 1, 4, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 2, 0, 0, 1, 0, 0, 0, 0, 0, 3, 2, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0], "Островского 56": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 4, 3, 4, 1], "Судакова 3": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 2, 0, 1, 1, 0, 0, 1, 0, 0, 3, 2, 1, 0, 0, 0, 5, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0], "Интернационалистов 22": [0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0], "Склад": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 2, 0, 0, 0, 5, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "Ключевая 24": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 1, 2, 2, 1, 1, 0, 0], "Боровая 11": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 1], "Олонец, Ленина 17": [0, 0, 0, 5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "ИМ": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "Октябрьский 27": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "Мичуринская 64": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0], "Ватутина 41": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]}, "merges": {"Первомайский 47": [["Первом. 47", 363]], "Олонец, Ленина 23": [["Олонец, Лен 23", 105], ["Олонец Ленина 23", 122]], "Репникова 1": [["Репникова", 53]], "Нойбранденбургская 24": [["Ной 24", 133]], "Первомайский 15": [["Первом. 15", 77]], "Суоярви, Победы 15": [["Суоярви", 3], ["суоярви", 1], ["Суоярви Победы 15", 3]], "Кондопога, Бумажников 38": [["Бумажников 38", 63], ["Кондопога Бумажников 38", 1]], "Кондопога, Пролетарская 16": [["Кондопога Пролет 16", 39], ["Кондопога Пролетарская", 1], ["Пролетарская 16", 69]], "Озеровых 12": [["озеровых", 5]], "Мелиоративный, Петрозаводская 20": [["Мелиоративный", 40], ["Петрозаводская 20", 2], ["Мелиоративный Петрозаводская 20", 31]], "Деревянное Онежская 53": [["Деревянное", 10], ["деревянное", 2]], "Интернационалистов 22": [["Интерн", 6]], "Профсоюзов 10": [["Профсоюзов", 2]], "Олонец, Ленина 17": [["Олонец, Лен 17", 6]], "Ленина 38": [["Ленина 38 (?)", 1]], "Офис": [["офис", 8]], "Кемь, Кирова 3": [["Кемь, Кирова 3 (?)", 1], ["Кемь Кирова 3", 14]], "Лента 1": [["Лента 1*", 46], ["Лента", 327], ["Лента1", 394]], "Склад": [["склад", 11]], "Судакова 3": [["судакова", 3], ["судакова 3", 1]], "Островского 56": [["островского 56", 3], ["островского", 1], ["Островского", 1]], "Казарменская 2 (Магнит)": [["Казарменская", 2], ["Казарменская 2", 6], ["Казарменская 2 Магнит", 44]], "Лососинское": [["Лососинское 38", 4]], "Ключевая 24": [["ключевая 24", 1], ["Ключевая 23", 1]], "Лента 2": [["Лента2", 44]]}, "dropped": 4, "lastDate": "2026-10-02"};
+const MN=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const MS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const months=D.months, P=D.points, S=D.series;
+const yearsAll=[...new Set(months.map(m=>+m.slice(0,4)))];
+const lastKey=months[months.length-1];
+const lastPartial=true; // последний месяц неполный (данные до D.lastDate)
+const fmt=n=>n.toLocaleString('ru-RU');
+const mlabel=k=>MS[+k.slice(5)-1]+' '+k.slice(0,4);
+const mlong=k=>MN[+k.slice(5)-1]+' '+k.slice(0,4);
+let st={y:'all',m:0,p:P[0]};
+try{const s=JSON.parse(localStorage.getItem('opt-st')||'null');if(s&&P.includes(s.p))st=s;}catch(e){}
+const save=()=>{try{localStorage.setItem('opt-st',JSON.stringify(st))}catch(e){}};
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* period */
+function inPeriod(k,y=st.y,m=st.m){const yy=+k.slice(0,4),mm=+k.slice(5);return (y==='all'||yy===y)&&(!m||mm===m);}
+function idxs(y=st.y,m=st.m){return months.map((k,i)=>inPeriod(k,y,m)?i:-1).filter(i=>i>=0);}
+function sum(p,ix){let s=0;for(const i of ix)s+=S[p][i];return s;}
+// comparison: same period a year earlier (for year / month); for "all" — none
+const yAgo=i=>months.indexOf((+months[i].slice(0,4)-1)+months[i].slice(4));
+// сопоставимые пары месяцев: только полные месяцы, у которых есть тот же месяц годом ранее
+function cmpPairs(ix){const cur=[],prev=[];for(const i of ix){if(months[i]===lastKey)continue;const j=yAgo(i);if(j>=0){cur.push(i);prev.push(j);}}return cur.length?{cur,prev}:null;}
+function rangeLbl(ix){const a=+months[ix[0]].slice(5),b=+months[ix[ix.length-1]].slice(5);return a===b?MS[a-1]:MS[a-1]+'–'+MS[b-1];}
+function prevIdx(){
+  if(st.y==='all') return null;
+  return cmpPairs(idxs());
+}
+function periodName(){
+  if(st.y==='all'&&!st.m) return 'весь период ('+mlabel(months[0])+' – '+mlabel(lastKey)+')';
+  if(st.y==='all') return MN[st.m-1].toLowerCase()+' всех лет';
+  if(!st.m) return st.y+' год';
+  return MN[st.m-1].toLowerCase()+' '+st.y;
+}
+function prevName(pv){ if(st.y==='all'||!pv)return ''; if(st.m) return MN[st.m-1].toLowerCase()+' '+(st.y-1);
+  const full=idxs().filter(i=>months[i]!==lastKey); return pv.cur.length===full.length&&pv.cur.length===12?(st.y-1)+' год':rangeLbl(pv.prev)+' '+(st.y-1)+' (сопоставимые месяцы)'; }
+
+/* tooltip */
+const tip=document.getElementById('tip');
+function showTip(e,html){tip.innerHTML=html;tip.hidden=false;const r=tip.getBoundingClientRect();let x=e.clientX+14,y=e.clientY+14;if(x+r.width>innerWidth-8)x=e.clientX-r.width-14;if(y+r.height>innerHeight-8)y=e.clientY-r.height-14;tip.style.left=x+'px';tip.style.top=y+'px';}
+const hideTip=()=>tip.hidden=true;
+
+/* controls */
+const ySeg=document.getElementById('years');
+['all',...yearsAll].forEach(y=>{const b=document.createElement('button');b.textContent=y==='all'?'Весь период':y;b.dataset.y=y;b.onclick=()=>{st.y=y==='all'?'all':+y;render();};ySeg.appendChild(b);});
+const mSel=document.getElementById('month');
+mSel.innerHTML='<option value="0">Все месяцы</option>'+MN.map((n,i)=>`<option value="${i+1}">${n}</option>`).join('');
+mSel.onchange=()=>{st.m=+mSel.value;render();};
+const pSel=document.getElementById('pSel');
+pSel.innerHTML=P.map(p=>`<option>${p}</option>`).join('');
+pSel.onchange=()=>{st.p=pSel.value;renderPoint();renderRank();save();};
+function pick(p){st.p=p;pSel.value=p;renderPoint();renderRank();save();if(innerWidth<900)document.getElementById('pointCard').scrollIntoView({behavior:'smooth',block:'start'});}
+
+/* KPIs */
+function renderKpis(){
+  const ix=idxs(), pv=prevIdx();
+  const tot=P.reduce((a,p)=>a+sum(p,ix),0);
+  const active=P.filter(p=>sum(p,ix)>0).length;
+  const nm=ix.length; const full=ix.filter(i=>months[i]!==lastKey);
+  const avg=full.length? Math.round(P.reduce((a,p)=>a+sum(p,full),0)/full.length):tot;
+  let leader=P.map(p=>[p,sum(p,ix)]).sort((a,b)=>b[1]-a[1])[0];
+  let dHtml='';
+  if(pv){const pt=P.reduce((a,p)=>a+sum(p,pv.prev),0),ct=P.reduce((a,p)=>a+sum(p,pv.cur),0);const ch=pt?((ct-pt)/pt*100):0;dHtml=`<span class="${ch>=0?'up':'down'}">${ch>=0?'▲':'▼'} ${Math.abs(ch).toFixed(1)}%</span> к ${prevName(pv)}: ${fmt(ct)} против ${fmt(pt)}`;}
+  else dHtml=nm+' мес.';
+  const partial=ix.includes(months.indexOf(lastKey));
+  document.getElementById('kpis').innerHTML=`
+   <div class="kpi"><div class="k">Заказов</div><div class="v">${fmt(tot)}</div><div class="d">${dHtml}</div></div>
+   <div class="kpi"><div class="k">В среднем за месяц</div><div class="v">${fmt(avg)}</div><div class="d">${full.length} полн. мес.${partial?' · без неполного '+mlabel(lastKey):''}</div></div>
+   <div class="kpi"><div class="k">Точек с заказами</div><div class="v">${active}</div><div class="d">из ${P.length} за всё время</div></div>
+   <div class="kpi"><div class="k">Лидер периода</div><div class="v" title="${leader[0]}">${leader[0]}</div><div class="d">${fmt(leader[1])} заказов · ${tot?(leader[1]/tot*100).toFixed(1):0}%</div></div>`;
+}
+
+/* total bar chart */
+function renderTotal(){
+  const el=document.getElementById('total');const W=el.clientWidth||900,H=220,ml=40,mr=8,mt=10,mb=34;
+  const tot=months.map((k,i)=>P.reduce((a,p)=>a+S[p][i],0));
+  const max=Math.ceil(Math.max(...tot)/100)*100;const iw=W-ml-mr,ih=H-mt-mb;const bw=iw/months.length;
+  const y=v=>mt+ih-v/max*ih;let g='';
+  for(let t=0;t<=max;t+=max/4){g+=`<line class="gr" x1="${ml}" x2="${W-mr}" y1="${y(t)}" y2="${y(t)}"/><text x="${ml-6}" y="${y(t)+4}" text-anchor="end">${fmt(t)}</text>`;}
+  const acc=css('--accent'),mut=css('--line');
+  months.forEach((k,i)=>{const x=ml+i*bw+1,w=Math.max(bw-2,1),h=ih-(y(tot[i])-mt);const on=inPeriod(k);const r=Math.min(4,w/2);
+    g+=`<path d="M${x},${mt+ih}V${y(tot[i])+r}q0,-${r} ${r},-${r}h${w-2*r}q${r},0 ${r},${r}V${mt+ih}Z" fill="${on?acc:mut}" ${k===lastKey?'fill-opacity=".5"':''}/>`;
+    g+=`<rect x="${ml+i*bw}" y="${mt}" width="${bw}" height="${ih}" fill="transparent" data-i="${i}"/>`;
+    if(k.endsWith('-01')||i===0) g+=`<text x="${ml+i*bw}" y="${H-mb+16}">${k.slice(0,4)}</text>`;
+    if(+k.slice(5)%3===1&&bw>14) g+=`<text x="${ml+i*bw+bw/2}" y="${H-mb+28}" text-anchor="middle" font-size="9.5">${MS[+k.slice(5)-1]}</text>`;
+  });
+  g+=`<line class="ax" x1="${ml}" x2="${W-mr}" y1="${mt+ih}" y2="${mt+ih}"/>`;
+  el.innerHTML=`<svg width="${W}" height="${H}" role="img" aria-label="Заказы всех точек по месяцам">${g}</svg>`;
+  el.querySelectorAll('rect[data-i]').forEach(r=>{r.onmousemove=e=>{const i=+r.dataset.i;const k=months[i];const top=P.map(p=>[p,S[p][i]]).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    showTip(e,`<b>${mlong(k)}</b>${k===lastKey?' (неполный, до '+D.lastDate.split('-').reverse().join('.')+')':''}<br>Всего: <b>${fmt(tot[i])}</b><br>${top.map(t=>t[0]+': '+t[1]).join('<br>')}`)};r.onmouseleave=hideTip;});
+}
+
+/* ranking */
+function renderRank(){
+  const ix=idxs(),pv=prevIdx();
+  const rows=P.map(p=>({p,v:sum(p,ix),cv:pv?sum(p,pv.cur):null,pr:pv?sum(p,pv.prev):null})).filter(r=>r.v>0||(r.pr||0)>0).sort((a,b)=>b.v-a.v||b.pr-a.pr);
+  const max=Math.max(1,...rows.map(r=>r.v));
+  document.getElementById('rankTitle').textContent='Рейтинг точек — '+periodName();
+  document.getElementById('rankHint').textContent=pv?'Δ — изменение к '+prevName(pv)+' (неполный последний месяц не сравнивается). Нажми на строку, чтобы открыть карточку точки.':'Нажми на строку, чтобы открыть карточку точки.';
+  document.getElementById('dHead').textContent=pv?'Δ':'Доля';
+  const tot=rows.reduce((a,r)=>a+r.v,0);
+  document.getElementById('rank').innerHTML=rows.map((r,i)=>{
+    let d;
+    if(pv){ if(!r.pr) d=r.cv?'<span class="up">новая</span>':'—'; else {const c=(r.cv-r.pr)/r.pr*100;d=`<span class="${c>=0?'up':'down'}">${c>=0?'+':''}${c.toFixed(0)}%</span>`;} }
+    else d=`<span style="color:var(--muted)">${(r.v/tot*100).toFixed(1)}%</span>`;
+    return `<div class="rank-row${r.p===st.p?' on':''}" tabindex="0" data-p="${r.p}"><span class="n">${i+1}</span><span class="nm" title="${r.p}">${r.p}</span><div><div class="bar" style="width:${r.v/max*100}%"></div></div><span class="c">${fmt(r.v)}</span><span class="dl">${d}</span></div>`}).join('');
+  document.querySelectorAll('.rank-row').forEach(el=>{el.onclick=()=>pick(el.dataset.p);el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(el.dataset.p);}};
+    el.onmousemove=e=>{const p=el.dataset.p;const r=rows.find(x=>x.p===p);showTip(e,`<b>${p}</b><br>${periodName()}: <b>${fmt(r.v)}</b>${pv?'<br>Сравнение: '+fmt(r.cv)+' против '+fmt(r.pr)+' ('+prevName(pv)+')':''}`)};el.onmouseleave=hideTip;});
+}
+
+/* point card */
+function renderPoint(){
+  const p=st.p; pSel.value=p; document.getElementById('pTitle').textContent=p;
+  const s=S[p]; const el=document.getElementById('pLine');
+  const W=el.clientWidth||600,H=210,ml=34,mr=10,mt=12,mb=26,iw=W-ml-mr,ih=H-mt-mb;
+  const max=Math.max(4,Math.ceil(Math.max(...s)*1.1));const step=iw/(months.length-1);
+  const x=i=>ml+i*step,y=v=>mt+ih-v/max*ih;let g='';
+  const nt=4;for(let t=0;t<=nt;t++){const v=Math.round(max*t/nt);g+=`<line class="gr" x1="${ml}" x2="${W-mr}" y1="${y(v)}" y2="${y(v)}"/><text x="${ml-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`;}
+  // period band
+  const ix=idxs(); if(st.y!=='all'||st.m){ ix.forEach(i=>{g+=`<rect x="${x(i)-step/2}" y="${mt}" width="${step}" height="${ih}" fill="var(--accent-soft)"/>`;}); }
+  months.forEach((k,i)=>{if(k.endsWith('-01')||i===0)g+=`<line class="ax" x1="${x(i)}" x2="${x(i)}" y1="${mt}" y2="${mt+ih}" stroke-dasharray="2 3"/><text x="${x(i)+3}" y="${H-8}">${k.slice(0,4)}</text>`;});
+  const pts=s.map((v,i)=>`${x(i)},${y(v)}`);
+  const full=pts.slice(0,-1).join(' ');
+  g+=`<polygon points="${ml},${mt+ih} ${full} ${x(s.length-2)},${mt+ih}" fill="var(--accent)" fill-opacity=".1"/>`;
+  g+=`<polyline points="${full}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+  g+=`<polyline points="${pts.slice(-2).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="3 3"/>`;
+  g+=`<line class="ax" x1="${ml}" x2="${W-mr}" y1="${mt+ih}" y2="${mt+ih}"/>`;
+  g+=`<line id="xh" x1="0" x2="0" y1="${mt}" y2="${mt+ih}" stroke="var(--fg2)" stroke-width="1" visibility="hidden"/><circle id="xd" r="4.5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2" visibility="hidden"/>`;
+  g+=`<rect x="${ml}" y="${mt}" width="${iw}" height="${ih}" fill="transparent" id="hit"/>`;
+  el.innerHTML=`<svg width="${W}" height="${H}" role="img" aria-label="Заказы ${p} по месяцам">${g}</svg>`;
+  const hit=el.querySelector('#hit'),xh=el.querySelector('#xh'),xd=el.querySelector('#xd');
+  hit.onmousemove=e=>{const b=el.querySelector('svg').getBoundingClientRect();let i=Math.round((e.clientX-b.left-ml)/step);i=Math.max(0,Math.min(months.length-1,i));
+    xh.setAttribute('x1',x(i));xh.setAttribute('x2',x(i));xh.setAttribute('visibility','visible');xd.setAttribute('cx',x(i));xd.setAttribute('cy',y(s[i]));xd.setAttribute('visibility','visible');
+    const pi=months.indexOf((+months[i].slice(0,4)-1)+months[i].slice(4));
+    showTip(e,`<b>${mlong(months[i])}</b>${months[i]===lastKey?' (неполный)':''}<br>Заказов: <b>${s[i]}</b>${pi>=0?'<br>Год назад: '+s[pi]:''}`);};
+  hit.onmouseleave=()=>{hideTip();xh.setAttribute('visibility','hidden');xd.setAttribute('visibility','hidden');};
+
+  // yearly bars
+  const ye=document.getElementById('pYears');const W2=ye.clientWidth||600,H2=96;
+  const yv=yearsAll.map(yr=>sum(p,idxs(yr,0)));const ym=Math.max(1,...yv);const cw=(W2)/yearsAll.length;let g2='';
+  yearsAll.forEach((yr,i)=>{const h=yv[i]/ym*56;const bx=i*cw+cw*0.2,bw=cw*0.6;const sel=st.y===yr;
+    g2+=`<rect x="${bx}" y="${70-h}" width="${bw}" height="${Math.max(h,1)}" rx="3" fill="var(--accent)" fill-opacity="${sel||st.y==='all'?1:.45}"/>`;
+    g2+=`<text x="${bx+bw/2}" y="${66-h}" text-anchor="middle" style="fill:var(--fg);font-weight:600">${fmt(yv[i])}</text><text x="${bx+bw/2}" y="86" text-anchor="middle">${yr}${idxs(yr,0).length<12?' ('+rangeLbl(idxs(yr,0))+')':''}</text>`;});
+  ye.innerHTML=`<svg width="${W2}" height="${H2}" role="img" aria-label="Заказы ${p} по годам">${g2}</svg>`;
+
+  // stats
+  const tot=s.reduce((a,b)=>a+b,0);const nz=s.map((v,i)=>[v,i]).filter(a=>a[0]>0);
+  const first=nz.length?months[nz[0][1]]:null,last=nz.length?months[nz[nz.length-1][1]]:null;
+  const fullIdx=s.map((v,i)=>i).filter(i=>months[i]!==lastKey);
+  const best=fullIdx.reduce((b,i)=>s[i]>s[b]?i:b,fullIdx[0]);
+  const actIdx=fullIdx.filter(i=>first&&months[i]>=first&&months[i]<=last);
+  const avg=actIdx.length?(actIdx.reduce((a,i)=>a+s[i],0)/actIdx.length):0;
+  const allTot=P.reduce((a,q)=>a+S[q].reduce((x,y)=>x+y,0),0);
+  // last 12 full months vs previous 12
+  const L=fullIdx.length;const l12=fullIdx.slice(L-12).reduce((a,i)=>a+s[i],0),p12=fullIdx.slice(L-24,L-12).reduce((a,i)=>a+s[i],0);
+  const c12=p12?((l12-p12)/p12*100):null;
+  document.getElementById('pStats').innerHTML=`
+   <div class="stat"><div class="k">Всего за всё время</div><div class="v">${fmt(tot)} <span class="pill">${(tot/allTot*100).toFixed(1)}% сети</span></div></div>
+   <div class="stat"><div class="k">Среднее в активный месяц</div><div class="v">${avg.toFixed(1)}</div></div>
+   <div class="stat"><div class="k">Лучший месяц</div><div class="v">${s[best]?mlabel(months[best])+' — '+s[best]:'—'}</div></div>
+   <div class="stat"><div class="k">Заказы шли</div><div class="v">${first?mlabel(first)+' – '+mlabel(last):'—'}</div></div>
+   <div class="stat"><div class="k">Последние 12 мес. к предыдущим 12</div><div class="v">${fmt(l12)} ${c12===null?(l12?'<span class="up">новая</span>':''):`<span class="${c12>=0?'up':'down'}">${c12>=0?'+':''}${c12.toFixed(0)}%</span>`}</div></div>
+   <div class="stat"><div class="k">Месяцев с заказами</div><div class="v">${nz.length} из ${months.length}</div></div>`;
+}
+
+/* heatmap */
+function seqColor(t){ // t 0..1 -> blend s100 -> accent -> s700
+  const a=hex(css('--s100')),b=hex(css('--accent')),c=hex(css('--s700'));
+  const mix=(u,v,k)=>u.map((x,i)=>Math.round(x+(v[i]-x)*k));
+  const r=t<.5?mix(a,b,t*2):mix(b,c,(t-.5)*2);return `rgb(${r.join(',')})`;
+}
+function hex(h){h=h.replace('#','');return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16));}
+function renderHeat(){
+  const max=Math.max(...P.flatMap(p=>S[p].slice(0,-1)));
+  document.getElementById('rampMax').textContent=max;
+  document.getElementById('ramp').style.background=`linear-gradient(90deg,${[0,.25,.5,.75,1].map(seqColor).join(',')})`;
+  let h='<thead><tr><th></th>';
+  yearsAll.forEach(yr=>{const n=months.filter(k=>+k.slice(0,4)===yr).length;h+=`<th class="yr" colspan="${n}">${yr}</th>`;});
+  h+='<th></th></tr><tr><th></th>'+months.map(k=>`<th>${MS[+k.slice(5)-1][0].toUpperCase()}</th>`).join('')+'<th>Σ</th></tr></thead><tbody>';
+  const ix=new Set(idxs());
+  const order=[...P].sort((a,b)=>sum(b,[...ix])-sum(a,[...ix])||S[b].reduce((x,y)=>x+y)-S[a].reduce((x,y)=>x+y));
+  for(const p of order){h+=`<tr><td class="nm" data-p="${p}">${p}</td>`;
+    S[p].forEach((v,i)=>{const bg=v?seqColor(Math.sqrt(Math.min(v,max)/max)):'transparent';h+=`<td data-p="${p}" data-i="${i}" class="${ix.has(i)?'':'dim'}" style="background:${bg};${v?'':'box-shadow:inset 0 0 0 1px var(--grid)'}"></td>`;});
+    h+=`<td class="tot">${fmt(sum(p,[...ix]))}</td></tr>`;}
+  h+='</tbody>';
+  const t=document.getElementById('hm');t.innerHTML=h;
+  t.onmousemove=e=>{const c=e.target.closest('td[data-i]');if(!c){hideTip();return;}const p=c.dataset.p,i=+c.dataset.i;const pi=months.indexOf((+months[i].slice(0,4)-1)+months[i].slice(4));
+    showTip(e,`<b>${p}</b><br>${mlong(months[i])}${months[i]===lastKey?' (неполный)':''}: <b>${S[p][i]}</b>${pi>=0?'<br>Год назад: '+S[p][pi]:''}`);};
+  t.onmouseleave=hideTip;
+  t.querySelectorAll('td.nm').forEach(c=>c.onclick=()=>pick(c.dataset.p));
+}
+
+/* yearly table */
+function renderYears(){
+  const lastY=+lastKey.slice(0,4),firstY=yearsAll[0];
+  const fy=idxs(firstY,0), ly=idxs(lastY,0), lyc=cmpPairs(ly);
+  document.getElementById('yHint').textContent=`Число заказов и изменение к предыдущему году по сопоставимым месяцам. ${firstY}: данные только за ${rangeLbl(fy)}, поэтому ${firstY+1} сравнивается с ним по ${rangeLbl(fy)}. ${lastY}: учтены ${rangeLbl(ly)} (${MS[+lastKey.slice(5)-1]} неполный, до ${D.lastDate.split('-').reverse().join('.')}), сравнение по ${rangeLbl(lyc.cur)}. Отсортировано по выбранному периоду.`;
+  const ix=idxs();
+  const order=[...P].sort((a,b)=>sum(b,ix)-sum(a,ix)||S[b].reduce((x,y)=>x+y)-S[a].reduce((x,y)=>x+y));
+  const yIdx=yr=>idxs(yr,0);
+  let h='<thead><tr><th>Оптика</th>'+yearsAll.map(y=>`<th>${y}${idxs(y,0).length<12?' <small style="font-weight:400">('+rangeLbl(idxs(y,0))+')</small>':''}</th>`).join('')+'<th>Всего</th></tr></thead><tbody>';
+  const totRow={p:'Вся сеть'};
+  const row=(name,get)=>{let r=`<tr><td>${name}</td>`;yearsAll.forEach((yr,j)=>{const v=get(yIdx(yr));let d='';
+      if(j>0){const pr=cmpPairs(yIdx(yr));const cur=pr?get(pr.cur):0,prev=pr?get(pr.prev):0;
+        if(prev>0){const c=(cur-prev)/prev*100;d=`<small class="${c>=0?'up':'down'}">${c>=0?'+':''}${c.toFixed(0)}%</small>`;}else if(cur>0)d='<small class="up">нов.</small>';}
+      r+=`<td>${v?fmt(v):'<span style="color:var(--muted)">—</span>'}${d}</td>`;});
+    r+=`<td><b>${fmt(get(months.map((_,i)=>i)))}</b></td></tr>`;return r;};
+  h+=row('<b>Вся сеть</b>',ix2=>P.reduce((a,p)=>a+sum(p,ix2),0));
+  for(const p of order) h+=row(p,ix2=>sum(p,ix2));
+  document.getElementById('ytab').innerHTML=h+'</tbody>';
+}
+
+function renderNotes(){
+  const m=D.merges;const items=Object.entries(m).map(([k,v])=>`<b>${k}</b> ← ${v.map(x=>`«${x[0]}» (${x[1]})`).join(', ')}`);
+  document.getElementById('notes').innerHTML=`
+   <li>Источник: таблица «Выполненные заказы», все листы с «Выполнено» в названии (январь 2023 – октябрь 2026), включая скрытые, плюс листы за 2022 год «Март 2022» … «Декабрь 2022» — всего ${months.length} листов, ${mlabel(months[0])} – ${mlabel(lastKey)}. Листы «Астигматика …» не учитывались.</li>
+   <li>Один заказ = одна заполненная ячейка в столбце «Оптика». Месяц заказа берётся из названия листа.</li>
+   <li>${mlong(lastKey)} неполный (данные до ${D.lastDate.split('-').reverse().join('.')}), на графиках он показан бледнее или пунктиром и не входит в средние.</li>
+   <li>Исключены ${D.dropped} ячейки без названия точки («?», «???», «35» и дата вместо названия на листе «Октябрь 2022»).</li>
+   <li>«Олонец, Лен 17» (6 заказов в 2022) оставлен отдельной точкой: адрес отличается от «Олонец, Ленина 23».</li>
+   <li>«Лента» без номера (327 заказов) отнесена к Ленте 1: она встречается только с июня 2024 по апрель 2026, когда Лента 2 не работала, и заполняет провалы Ленты 1 (например, в сентябре 2024 и феврале 2025 у Ленты 1 ноль, у «Ленты» 57 и 58).</li>
+   <li>Склеены варианты написания: ${items.join('; ')}.</li>`;
+}
+
+function render(){
+  ySeg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.y==String(st.y))));
+  mSel.value=st.m;
+  document.getElementById('sub').textContent=`${fmt(P.reduce((a,p)=>a+S[p].reduce((x,y)=>x+y,0),0))} выполненных заказов, ${P.length} точек · ${mlabel(months[0])} – ${mlabel(lastKey)}`;
+  renderKpis();renderTotal();renderRank();renderPoint();renderHeat();renderYears();save();
+}
+renderNotes();render();
+let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{renderTotal();renderPoint();},150);});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{renderTotal();renderPoint();renderHeat();});
+new MutationObserver(()=>{renderTotal();renderPoint();renderHeat();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+</script>
+</body></html>
